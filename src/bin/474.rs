@@ -30,7 +30,7 @@ struct Solution {}
 
 impl Solution {
     /// Extract the numbers of 0 and 1 bits in each string
-    fn extract(s: &String) -> (i32, i32) {
+    fn extract(s: &String) -> (usize, usize) {
         let mut zeroes = 0;
         let mut ones = 0;
         for c in s.chars() {
@@ -44,41 +44,49 @@ impl Solution {
     }
 
     // pub fn find_max_form(strs: Vec<String>, m: i32, n: i32) -> i32 {
-    //     let m = m as usize;
-    //     let n = n as usize;
-    //     let nums = strs.iter().map(Solution::extract);
-    //     // We can solve this problem using dynamic programming
-    //     // The pattern is similar to coin exchange
-    //     let mut dp = vec![vec![0; n + 1]; m + 1];
-    //     for i in 1..=m {
-    //         for j in 1..=n {
-    //             for (zeroes, ones) in nums.clone() {
-    //                 dp[i][j] = dp[i - 1][j].max(dp[i][j - 1]);
-    //                 // If we take this binary string, we consume the exact amounts of 0 and 1 bits
-    //                 if i >= zeroes && j >= ones {
-    //                     dp[i][j] = dp[i][j].max(dp[i - zeroes][j - ones] + 1);
-    //                 }
-    //             }
+    //     // First, let's solve this problem using backtracking
+    //     let mut res = 0;
+    //     // Look through all possibilities and pick the best result
+    //     for (i, str) in strs.iter().enumerate() {
+    //         let (zeroes, ones) = Solution::extract(str);
+    //         if m >= zeroes && n >= ones {
+    //             let mut new_strs = strs.clone();
+    //             new_strs.remove(i);
+    //             // Recursive call
+    //             res = res.max(Solution::find_max_form(new_strs, m - zeroes, n - ones) + 1);
     //         }
-    //         println!("{:?}", dp);
     //     }
-    //     dp[m][n]
+    //     res
     // }
 
     pub fn find_max_form(strs: Vec<String>, m: i32, n: i32) -> i32 {
-        // First, let's solve this problem using backtracking
-        let mut res = 0;
-        // Look through all possibilities and pick the best result
-        for (i, str) in strs.iter().enumerate() {
-            let (zeroes, ones) = Solution::extract(str);
-            if m >= zeroes && n >= ones {
-                let mut new_strs = strs.clone();
-                new_strs.remove(i);
-                // Recursive call
-                res = res.max(Solution::find_max_form(new_strs, m - zeroes, n - ones) + 1);
+        let m = m as usize;
+        let n = n as usize;
+        let nums = strs.iter().map(Solution::extract);
+        // From the top down backtracking approach above, we can implement a dynamic programming approach
+        // using bottom up with the same logic.
+        // Because each recursive call require 3 parameters, we'll store the smaller results into a 3D array
+        let mut dp = vec![vec![vec![0; n + 1]; m + 1]; strs.len() + 1];
+        for (k, (zeroes, ones)) in nums.enumerate() {
+            let k = k + 1;
+            for i in 0..=m {
+                for j in 0..=n {
+                    dp[k][i][j] = dp[k - 1][i][j];
+                    if i > 0 {
+                        dp[k][i][j] = dp[k][i][j].max(dp[k][i - 1][j]);
+                    }
+                    if j > 0 {
+                        dp[k][i][j] = dp[k][i][j].max(dp[k][i][j - 1]);
+                    }
+                    // Check if we can take the current str
+                    if i >= zeroes && j >= ones {
+                        // If we do take it, consume it as well as the equivalent numbers of 0 and 1
+                        dp[k][i][j] = dp[k][i][j].max(dp[k - 1][i - zeroes][j - ones] + 1);
+                    }
+                }
             }
         }
-        res
+        dp[strs.len()][m][n]
     }
 }
 
