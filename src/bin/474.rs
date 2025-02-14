@@ -33,14 +33,14 @@ impl Solution {
     fn extract(s: &String) -> (usize, usize) {
         let mut zeroes = 0;
         let mut ones = 0;
-        for c in s.chars() {
-            if c == '0' {
-                zeroes += 1;
-            } else {
-                ones += 1;
+        for &byte in s.as_bytes() {
+            match byte {
+                b'0' => zeroes += 1,
+                b'1' => ones += 1,
+                _ => (),
             }
         }
-        return (zeroes, ones);
+        (zeroes, ones)
     }
 
     // pub fn find_max_form(strs: Vec<String>, m: i32, n: i32) -> i32 {
@@ -66,27 +66,22 @@ impl Solution {
         // From the top down backtracking approach above, we can implement a dynamic programming approach
         // using bottom up with the same logic.
         // Because each recursive call require 3 parameters, we'll store the smaller results into a 3D array
-        let mut dp = vec![vec![vec![0; n + 1]; m + 1]; strs.len() + 1];
-        for (k, (zeroes, ones)) in nums.enumerate() {
-            let k = k + 1;
-            for i in 0..=m {
-                for j in 0..=n {
-                    dp[k][i][j] = dp[k - 1][i][j];
-                    if i > 0 {
-                        dp[k][i][j] = dp[k][i][j].max(dp[k][i - 1][j]);
-                    }
-                    if j > 0 {
-                        dp[k][i][j] = dp[k][i][j].max(dp[k][i][j - 1]);
-                    }
+        // R1: Each iteration over a str overwrites the previous dp array, so we only need a 2D array
+        let mut dp = vec![vec![0; n + 1]; m + 1];
+        for (zeroes, ones) in nums {
+            // Reversion is necessary here because we need to calculate dp[k][i][j] from dp[k-1][<i][<j].
+            // Otherwise, dp[k-1] data would be overwritten
+            for i in (zeroes..=m).rev() {
+                for j in (ones..=n).rev() {
                     // Check if we can take the current str
-                    if i >= zeroes && j >= ones {
-                        // If we do take it, consume it as well as the equivalent numbers of 0 and 1
-                        dp[k][i][j] = dp[k][i][j].max(dp[k - 1][i - zeroes][j - ones] + 1);
-                    }
+                    // R2: Instead of looping from 0 and do the checking, we can achieve both with better
+                    // performance by looping from zeroes and ones
+                    // If we do take it, consume it as well as the equivalent numbers of 0 and 1
+                    dp[i][j] = dp[i][j].max(dp[i - zeroes][j - ones] + 1);
                 }
             }
         }
-        dp[strs.len()][m][n]
+        dp[m][n]
     }
 }
 
