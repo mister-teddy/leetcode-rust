@@ -1,3 +1,5 @@
+use std::collections::BinaryHeap;
+
 /// 1976. Number of Ways to Arrive at Destination
 /// Medium
 ///
@@ -42,18 +44,9 @@ struct Solution {}
 
 impl Solution {
     pub fn count_paths(n: i32, roads: Vec<Vec<i32>>) -> i32 {
-        // This problem can be solved with dynamic programming
-        // Let dp[i] be the number of ways you can travel from 0 -> i in the shortest amount of time
-        let n = n as usize;
-        let mut dp = vec![1; n];
-
-        // We also need a list to store the shortest travel time to each intersection
-        // Let st[i] be the shortest amount of time to travel from 0 -> i
-        let mut st = vec![u64::MAX; n];
-        st[0] = 0;
-
         // For faster indexing, we build an adjacency matrix based on roads
-        let mut matrix = vec![vec![i32::MAX; n]; n];
+        let n = n as usize;
+        let mut matrix = vec![vec![0; n]; n];
         for road in roads {
             let a = road[0] as usize;
             let b = road[1] as usize;
@@ -61,29 +54,40 @@ impl Solution {
             matrix[b][a] = road[2];
         }
 
-        for i in 1..n {
-            // To get to i, we can try traveling from any intersection between 0..i-1
-            for j in 0..i {
-                let time_travel_from_i = st[j] + matrix[i][j] as u64;
-                match time_travel_from_i.cmp(&st[i]) {
-                    std::cmp::Ordering::Equal => {
-                        // If we find a new way and it has the same travel time, we combine the possibilities, i.e., add up the number of ways
-                        dp[i] = (dp[i] + dp[j]) % (1_000_000_000 + 7);
-                    }
-                    std::cmp::Ordering::Less => {
-                        // If we find a new way and it has a shorter travel time, we drop the old ways, and start counting from this shorter way instead
-                        st[i] = time_travel_from_i;
-                        dp[i] = dp[j];
-                    }
-                    std::cmp::Ordering::Greater => {
-                        // If we find a new way but it is more time consuming, just ignore it
+        // Let dp[i] be the number of ways you can travel from 0 -> i in the shortest amount of time
+        let mut dp = vec![1; n];
+        // Let times[i] be the shortest travel time from 0 to i
+        let mut times = vec![i64::MAX; n];
+        times[0] = 0;
+        // If finished[i] is true, times[i] is final, which means it cannot be any smaller
+        let mut finished = vec![false; n];
+        // The priority queue to implement Dijkstra algorithm
+        let mut queue = BinaryHeap::from([(0, 0)]);
+        while !queue.is_empty() {
+            if let Some((_, current)) = queue.pop() {
+                if !finished[current] {
+                    finished[current] = true;
+                    for next in 0..n {
+                        if matrix[current][next] > 0 {
+                            let new_time = times[current] + matrix[current][next] as i64;
+                            match new_time.cmp(&times[next]) {
+                                std::cmp::Ordering::Less => {
+                                    times[next] = new_time;
+                                    // Reset counter
+                                    dp[next] = dp[current];
+                                    queue.push((-new_time, next));
+                                }
+                                std::cmp::Ordering::Equal => {
+                                    // Add up possibilities
+                                    dp[next] = (dp[next] + dp[current]) % (1_000_000_000 + 7);
+                                }
+                                std::cmp::Ordering::Greater => {}
+                            }
+                        }
                     }
                 }
             }
         }
-
-        println!("{:?}", dp);
-        println!("{:?}", st);
 
         dp[n - 1]
     }
