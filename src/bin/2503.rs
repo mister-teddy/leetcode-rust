@@ -38,35 +38,55 @@
 /// - 1 <= grid[i][j], queries[i] <= 10^6
 struct Solution {}
 
+use std::collections::{BinaryHeap, HashMap};
+
 impl Solution {
-    fn calc_score(grid: &Vec<Vec<i32>>, query: i32) -> i32 {
+    pub fn max_points(grid: Vec<Vec<i32>>, queries: Vec<i32>) -> Vec<i32> {
+        // We can reply to the queries in ascending order
+        let mut sorted_queries = queries.clone();
+        sorted_queries.sort();
+
+        // That way, we can traverse the adjacent cells using BFS "incrementally"
+        // So we need a priority queue, which will process the smaller cells first
+        // Each element in a queue is a tuple of 3 number: (v, x, y), with v = -grid[x][y]
+        // (so that we pop the smaller cells first)
+        let mut queue = BinaryHeap::new();
+        queue.push((-grid[0][0], 0, 0));
+
+        // Then we process the BFS
         let mut score = 0;
-        let mut queue = vec![(0 as i32, 0 as i32)];
+        let mut scores = HashMap::new();
         let mut checked = vec![vec![false; grid[0].len()]; grid.len()];
-        while let Some((x, y)) = queue.pop() {
-            if x >= 0 && y >= 0 {
-                let x = x as usize;
-                let y = y as usize;
-                if x < grid.len() && y < grid[0].len() && !checked[x][y] && grid[x][y] < query {
-                    checked[x][y] = true;
-                    score += 1;
-                    let x = x as i32;
-                    let y = y as i32;
-                    queue.push((x + 1, y));
-                    queue.push((x - 1, y));
-                    queue.push((x, y + 1));
-                    queue.push((x, y - 1));
+        sorted_queries.iter().for_each(|query| {
+            while let Some((v, _, _)) = queue.peek() {
+                if -v < *query {
+                    // If the current query can reach this cell, we continue BFS-ing
+                    let (_, x, y) = queue.pop().unwrap();
+                    if !checked[x][y] {
+                        checked[x][y] = true;
+                        score += 1;
+                        if x > 0 {
+                            queue.push((-grid[x - 1][y], x - 1, y));
+                        }
+                        if x < grid.len() - 1 {
+                            queue.push((-grid[x + 1][y], x + 1, y));
+                        }
+                        if y > 0 {
+                            queue.push((-grid[x][y - 1], x, y - 1));
+                        }
+                        if y < grid[0].len() - 1 {
+                            queue.push((-grid[x][y + 1], x, y + 1));
+                        }
+                    }
+                } else {
+                    // If the current query cannot reach this cell, we have found the answer for this query
+                    break;
                 }
             }
-        }
-        score
-    }
+            scores.insert(query, score);
+        });
 
-    pub fn max_points(grid: Vec<Vec<i32>>, queries: Vec<i32>) -> Vec<i32> {
-        queries
-            .iter()
-            .map(|query| Solution::calc_score(&grid, *query))
-            .collect()
+        queries.iter().map(|query| scores[query]).collect()
     }
 }
 
