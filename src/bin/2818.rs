@@ -1,5 +1,3 @@
-use std::collections::{BinaryHeap, HashSet};
-
 /// 2818. Apply Operations to Maximize Score
 ///
 /// You are given an array nums of n positive integers and an integer k.
@@ -44,75 +42,108 @@ use std::collections::{BinaryHeap, HashSet};
 /// - 1 <= k <= min(n * (n + 1) / 2, 10^9)
 struct Solution {}
 
+const MODULO: u64 = 1_000_000_000 + 7;
+
 impl Solution {
+    fn mod_exp(mut base: u64, mut exp: usize) -> u64 {
+        let mut result = 1;
+        while exp > 0 {
+            if exp % 2 == 1 {
+                result = result * base % MODULO; // Multiply when the current bit is set
+            }
+            base = base * base % MODULO; // Square the base
+            exp /= 2; // Shift the exponent to the right
+        }
+
+        result
+    }
+
     pub fn maximum_score(nums: Vec<i32>, k: i32) -> i32 {
         // First, we calculate the prime score of each number
         // For a faster calculation, we will store a set of unique prime factors, for all number between 1 and max
         let max = *nums.iter().max().unwrap() as usize; // O(n)
-        let mut prime_factors = vec![HashSet::new(); max + 1];
+        let mut prime_factors = vec![0; max + 1];
         for i in 2..=max {
-            for k in 2..=((i as f32).sqrt() as usize) {
-                if i % k == 0 {
-                    for factor in prime_factors[k].clone() {
-                        prime_factors[i].insert(factor);
-                    }
-                    for factor in prime_factors[i / k].clone() {
-                        prime_factors[i].insert(factor);
-                    }
-                    break;
+            if prime_factors[i] == 0 {
+                // `i` is a prime number
+                for multiple in (i..=max).step_by(i) {
+                    prime_factors[multiple] += 1;
                 }
             }
-            if prime_factors[i].is_empty() {
-                prime_factors[i].insert(i);
-            }
-        } // O(max(nums)^1.5)
+        } // O(max(nums))
 
         // Second, we calculate the prime score of each number
         let prime_scores: Vec<usize> = nums
             .iter()
-            .map(|num| prime_factors[*num as usize].len())
+            .map(|num| prime_factors[*num as usize])
             .collect(); // O(n)
 
-        // Third, we calculate how much a number can "span" left or right
-        // Let spans[i] = (left, right), where:
+        // Third, we calculate how much each number can "span" left or right:
         //   - left is how many numbers to the left that have prime score < nums[i]
         //   - right is how many numbers to the right that have prime score <= nums[i]
+        //   - we can pick a combination of (left + 1)*(right + 1) ranges, in which x still be the number with the most prime score
+        // Third, we calculate how much each number can "span" left or right:
         let mut spans = Vec::new();
-        for i in 0..nums.len() {
-            let mut left = 0;
-            while i - left > 0 && prime_scores[i - left - 1] < prime_scores[i] {
-                left += 1;
-            }
-            let mut right = 0;
-            while i + right < nums.len() - 1 && prime_scores[i + right + 1] <= prime_scores[i] {
-                right += 1;
-            }
-            spans.push((left, right));
-        } // O(n) on average
+        let mut left_span = vec![0; nums.len()];
+        let mut right_span = vec![0; nums.len()];
 
-        // Four, If a number x can span left and right, we can pick a combination of (left + 1)*(right + 1) ranges,
-        // in which x still be the number with the most prime score
-        // So we store a max heap with x as the priority metric, along with its total combinations
-        let mut heap = BinaryHeap::new();
+        // Calculate left spans using a monotonic stack
+        let mut stack = Vec::new();
         for i in 0..nums.len() {
-            let (left, right) = spans[i];
-            heap.push((nums[i], (left + 1) * (right + 1)));
-        } // O(nlogn)
+            while let Some(&top) = stack.last() {
+                if prime_scores[top] < prime_scores[i] {
+                    stack.pop();
+                } else {
+                    break;
+                }
+            }
+            left_span[i] = if let Some(&top) = stack.last() {
+                i - top
+            } else {
+                i + 1
+            };
+            stack.push(i);
+        }
+
+        // Calculate right spans using a monotonic stack
+        stack.clear();
+        for i in (0..nums.len()).rev() {
+            while let Some(&top) = stack.last() {
+                if prime_scores[top] <= prime_scores[i] {
+                    stack.pop();
+                } else {
+                    break;
+                }
+            }
+            right_span[i] = if let Some(&top) = stack.last() {
+                top - i
+            } else {
+                nums.len() - i
+            };
+            stack.push(i);
+        }
+
+        // Combine left and right spans to calculate total spans
+        for i in 0..nums.len() {
+            spans.push((nums[i], left_span[i] * right_span[i]));
+        }
+
+        // Fourth, we sort the numbers in descending order, along with its total combinations
+        spans.sort(); // O(nlogn)
+        spans.reverse(); // O(n)
 
         // Finally, we return at most k combinations from the heap, multiplied to get the result
         let mut total = 0;
         let mut result = 1 as u64;
-        const MODULO: u64 = 1_000_000_000 + 7;
-        while let Some((x, count)) = heap.pop() {
+
+        for (x, count) in spans {
             let pick = count.min(k as usize - total);
-            for _ in 0..pick {
-                result = (result * (x as u64)) % MODULO;
-            }
+            result = result * Solution::mod_exp(x as u64, pick) % MODULO;
             total += pick;
             if total == k as usize {
                 break;
             }
-        } // O(min(k, nlogn))
+        } // O(min(k, n))
 
         result as i32
     }
