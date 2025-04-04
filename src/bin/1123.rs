@@ -52,6 +52,32 @@ impl TreeNode {
             right: None,
         }
     }
+
+    /// Constructs a binary tree from a level-order Vec<Option<i32>>
+    pub fn from_vec(data: Vec<Option<i32>>) -> Option<Rc<RefCell<TreeNode>>> {
+        if data.is_empty() || data[0].is_none() {
+            return None;
+        }
+
+        let nodes: Vec<Option<Rc<RefCell<TreeNode>>>> = data
+            .iter()
+            .map(|&x| x.map(|v| Rc::new(RefCell::new(TreeNode::new(v)))))
+            .collect();
+
+        let mut i = 1;
+        for node in nodes.iter().flatten() {
+            if i < nodes.len() {
+                node.borrow_mut().left = nodes[i].clone();
+                i += 1;
+            }
+            if i < nodes.len() {
+                node.borrow_mut().right = nodes[i].clone();
+                i += 1;
+            }
+        }
+
+        nodes[0].clone()
+    }
 }
 
 impl Solution {
@@ -65,26 +91,59 @@ impl Solution {
         while !queue.is_empty() {
             first = None;
             last = None;
+            let mut layer = vec![];
             while let Some(node) = queue.pop() {
                 if first.is_none() {
-                    first.replace(node);
+                    first.replace(node.clone());
                 }
-                last.replace(node);
-                if let Some(left) = node.borrow().left {
-                    queue.push(left);
-                    parents[left.borrow().val as usize].replace(node);
+                last.replace(node.clone());
+                if let Some(left) = &node.borrow().left {
+                    layer.push(left.clone());
+                    parents[left.borrow().val as usize].replace(node.clone());
                 }
-                if let Some(right) = node.borrow().right {
-                    queue.push(right);
-                    parents[right.borrow().val as usize].replace(node);
+                if let Some(right) = &node.borrow().right {
+                    layer.push(right.clone());
+                    parents[right.borrow().val as usize].replace(node.clone());
                 }
             }
+            queue.extend(layer);
         }
 
-        while first != last {
-            first.replace(parents[first.unwrap().borrow().val as usize].unwrap());
-            last.replace(parents[last.unwrap().borrow().val as usize].unwrap());
+        loop {
+            let first_val = first.as_ref().unwrap().borrow().val;
+            let last_val = last.as_ref().unwrap().borrow().val;
+            if first_val == last_val {
+                break;
+            }
+            first.replace(parents[first_val as usize].as_ref().unwrap().clone());
+            last.replace(parents[last_val as usize].as_ref().unwrap().clone());
         }
         first
     }
+}
+
+fn main() {
+    // Example 1
+    let root = TreeNode::from_vec(vec![
+        Some(3),
+        Some(5),
+        Some(1),
+        Some(6),
+        Some(2),
+        Some(0),
+        Some(8),
+        None,
+        None,
+        Some(7),
+        Some(4),
+    ]);
+    assert_eq!(Solution::lca_deepest_leaves(root).unwrap().borrow().val, 2);
+
+    // Example 2
+    let root = TreeNode::from_vec(vec![Some(1)]);
+    assert_eq!(Solution::lca_deepest_leaves(root).unwrap().borrow().val, 1);
+
+    // Example 3
+    let root = TreeNode::from_vec(vec![Some(0), Some(1), Some(3), None, Some(2)]);
+    assert_eq!(Solution::lca_deepest_leaves(root).unwrap().borrow().val, 2);
 }
