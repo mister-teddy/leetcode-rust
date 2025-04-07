@@ -40,12 +40,13 @@ struct Solution {}
 
 impl Solution {
     pub fn subset_xor_sum(nums: Vec<i32>) -> i32 {
-        let mut combinations = vec![0];
-        for i in 0..nums.len() {
-            for c in combinations {
-                combinations.push(c & );
+        let mut xors = vec![0];
+        for num in nums {
+            for x in xors.clone() {
+                xors.push(x ^ num);
             }
         }
+        xors.iter().sum()
     }
 }
 
