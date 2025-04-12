@@ -41,27 +41,16 @@
 // Output: 2468
 
 // Constraints:
-
-use std::collections::HashSet;
-
 // 1 <= n <= 10
 // 1 <= k <= 9
 struct Solution {}
 
+use std::{collections::HashSet, env::consts::FAMILY, f32::DIGITS};
+
 impl Solution {
     pub fn count_good_integers(n: i32, k: i32) -> i64 {
-        let mut nums = find_all_k_palindrome(n as usize, vec![], HashSet::new());
-        let mut sorted: Vec<&u64> = nums.iter().collect();
-        sorted.sort();
-        println!(
-            "{:?}",
-            sorted
-                .iter()
-                .filter(|x| **x % k as u64 == 0)
-                .collect::<Vec<&&u64>>()
-        );
-
-        nums.iter().filter(|x| *x % k as u64 == 0).count() as i64
+        let mut nums = find_all_k_palindrome(n as usize, k, vec![]);
+        nums.iter().map(count_combinations).sum()
     }
 }
 
@@ -69,51 +58,66 @@ impl Solution {
 /// We find then by recursive/backtracking
 /// In each recursion cycle, we need to pass in all posible prefixes
 /// This function assumes all prefixes have the same length
-fn find_all_k_palindrome(n: usize, prefixes: Vec<u8>, constrained: HashSet<u8>) -> HashSet<u64> {
+fn find_all_k_palindrome(n: usize, k: i32, prefixes: Vec<u8>) -> HashSet<Vec<u8>> {
     // This is the backtracking tail, concat the digits so that we have a valid number
     let i = prefixes.len();
     if i == n {
-        if prefixes.iter().filter(|d| **d == 0).count() == n - 1 {
-            return [].into(); // These numbers are *00, whose only palindrome arragement is 0*0, which is not valid
-        }
         let num = prefixes.iter().fold(0 as u64, |s, d| 10 * s + *d as u64);
-        return [num].into();
+        if num % k as u64 == 0 {
+            let mut prefixes = prefixes.clone();
+            prefixes.sort();
+            return [prefixes].into();
+        } else {
+            return [].into();
+        }
     }
 
-    // i is smaller than n
-    // Handle 2 cases here:
-    // - Free try: try any number between 0 to 9
-    // - Constrained try: the number must be selected from a collection of numbers
-    // You can free try as long as you have enough vacancies for the constrained collection
-    // i.e., constrained.len() < n - i
+    // Handle 2 cases here: left half and right half
     let mut res = HashSet::new();
-    if constrained.len() < n - i {
-        // Free try
+    if i < (n + 1) / 2 {
+        // left half
         for d in if i == 0 { 1 } else { 0 }..=9 {
             // try each *digit* from 0 to 9
-            let mut constrained = constrained.clone();
-            if constrained.contains(&d) {
-                constrained.remove(&d);
-            } else {
-                constrained.insert(d);
-            }
             let mut prefixes = prefixes.clone();
             prefixes.push(d);
-            res.extend(find_all_k_palindrome(n, prefixes, constrained));
+            res.extend(find_all_k_palindrome(n, k, prefixes));
         }
     } else {
-        // Constrained try
-        for d in &constrained {
-            let mut constrained = constrained.clone();
-            constrained.remove(d);
-            // di not used before
-            let mut prefixes = prefixes.clone();
-            prefixes.push(*d);
-            res.extend(find_all_k_palindrome(n, prefixes, constrained));
-        }
+        // right half
+        // just pick the mirrored digit
+        let x = prefixes[n - i - 1].clone();
+        let mut prefixes = prefixes.clone();
+        prefixes.push(x);
+        res.extend(find_all_k_palindrome(n, k, prefixes));
     }
 
     res
+}
+
+fn factorial(x: usize) -> i64 {
+    if x == 0 {
+        return 1;
+    }
+    x as i64 * factorial(x - 1)
+}
+
+fn count_combinations(digits: &Vec<u8>) -> i64 {
+    let mut all = if digits[0] == 0 {
+        digits.iter().filter(|x| **x != 0).count() as i64 * factorial(digits.len() - 1)
+    } else {
+        factorial(digits.len())
+    };
+    let mut count = 1;
+    for i in 1..digits.len() {
+        if digits[i] == digits[i - 1] {
+            count += 1;
+        } else {
+            all /= factorial(count);
+            count = 1;
+        }
+    }
+    all /= factorial(count);
+    all
 }
 
 fn main() {
