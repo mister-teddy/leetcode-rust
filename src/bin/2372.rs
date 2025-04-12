@@ -50,10 +50,18 @@ struct Solution {}
 
 impl Solution {
     pub fn count_good_integers(n: i32, k: i32) -> i64 {
-        let nums = find_all_k_palindrome(n as usize, vec![], 0);
-        println!("{:?}", nums);
+        let mut nums = find_all_k_palindrome(n as usize, vec![], HashSet::new());
+        let mut sorted: Vec<&u64> = nums.iter().collect();
+        sorted.sort();
+        println!(
+            "{:?}",
+            sorted
+                .iter()
+                .filter(|x| **x % k as u64 == 0)
+                .collect::<Vec<&&u64>>()
+        );
 
-        0
+        nums.iter().filter(|x| *x % k as u64 == 0).count() as i64
     }
 }
 
@@ -61,36 +69,47 @@ impl Solution {
 /// We find then by recursive/backtracking
 /// In each recursion cycle, we need to pass in all posible prefixes
 /// This function assumes all prefixes have the same length
-fn find_all_k_palindrome(n: usize, prefixes: Vec<u8>, used_mask: i32) -> HashSet<u64> {
+fn find_all_k_palindrome(n: usize, prefixes: Vec<u8>, constrained: HashSet<u8>) -> HashSet<u64> {
     // This is the backtracking tail, concat the digits so that we have a valid number
     let i = prefixes.len();
     if i == n {
+        if prefixes.iter().filter(|d| **d == 0).count() == n - 1 {
+            return [].into(); // These numbers are *00, whose only palindrome arragement is 0*0, which is not valid
+        }
         let num = prefixes.iter().fold(0 as u64, |s, d| 10 * s + *d as u64);
         return [num].into();
     }
 
     // i is smaller than n
-    // Handle 2 cases here: left half and right half
+    // Handle 2 cases here:
+    // - Free try: try any number between 0 to 9
+    // - Constrained try: the number must be selected from a collection of numbers
+    // You can free try as long as you have enough vacancies for the constrained collection
+    // i.e., constrained.len() < n - i
     let mut res = HashSet::new();
-    if i < (n + 1) / 2 {
-        // left half
+    if constrained.len() < n - i {
+        // Free try
         for d in if i == 0 { 1 } else { 0 }..=9 {
             // try each *digit* from 0 to 9
+            let mut constrained = constrained.clone();
+            if constrained.contains(&d) {
+                constrained.remove(&d);
+            } else {
+                constrained.insert(d);
+            }
             let mut prefixes = prefixes.clone();
             prefixes.push(d);
-            res.extend(find_all_k_palindrome(n, prefixes, used_mask));
+            res.extend(find_all_k_palindrome(n, prefixes, constrained));
         }
     } else {
-        // right half
-        for di in 0..n / 2 {
-            // try each *index* in the left half of prefixes
-            if (used_mask >> di) & 1 == 0 {
-                // di not used before
-                let x = prefixes[di].clone();
-                let mut prefixes = prefixes.clone();
-                prefixes.push(x);
-                res.extend(find_all_k_palindrome(n, prefixes, used_mask | (1 << di)));
-            }
+        // Constrained try
+        for d in &constrained {
+            let mut constrained = constrained.clone();
+            constrained.remove(d);
+            // di not used before
+            let mut prefixes = prefixes.clone();
+            prefixes.push(*d);
+            res.extend(find_all_k_palindrome(n, prefixes, constrained));
         }
     }
 
