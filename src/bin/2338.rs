@@ -1,4 +1,4 @@
-use std::f64::MAX_10_EXP;
+use std::collections::HashMap;
 
 /// Category: algorithms
 /// Level: Hard
@@ -50,13 +50,35 @@ use std::f64::MAX_10_EXP;
 /// 	2 <= n <= 10⁴
 /// 	1 <= maxValue <= 10⁴
 
+const MODULO: i32 = 1_000_000_007;
+
+fn f(n: usize) -> usize {
+    if n == 0 {
+        return 1;
+    }
+    (n as u64 * f(n - 1) as u64 % MODULO as u64) as usize
+}
+
+fn f_range(n: usize, p: usize) -> usize {
+    if p <= n {
+        return n;
+    }
+    (p as u64 * f_range(n, p - 1) as u64 % MODULO as u64) as usize
+}
+
+fn count_factors(p: usize, n: usize) -> usize {
+    if n % p != 0 {
+        return 0;
+    }
+    1 + count_factors(p, n / p)
+}
+
 impl Solution {
-    pub fn ideal_arrays(n: i32, max_value: i32) -> i32 {
+    pub fn ideal_arrays_time_limit_exceeded(n: i32, max_value: i32) -> i32 {
         // We can solve this problem with dynamic programming
         // Let `dp[i][j]` be the number of distinct ideal arrays of length i, end with j
         // - `dp[1][*] = 1`
         // - `dp[i][j] = dp[i-1][k]` with all `j%k == 0`
-        const MODULO: i32 = 1_000_000_007;
         let n = n as usize;
         let max_value = max_value as usize;
         let mut dp = vec![vec![0 as i32; max_value + 1]; n + 1];
@@ -70,5 +92,44 @@ impl Solution {
             }
         }
         dp[n].iter().fold(0, |sum, x| (sum + x) % MODULO)
+    }
+
+    pub fn ideal_arrays(n: i32, max_value: i32) -> i32 {
+        // Use sieve to count prime factors of all numbers from 1..max_value
+        let n = n as usize;
+        let max_value = max_value as usize;
+        let mut factors: Vec<HashMap<usize, usize>> =
+            (0..=max_value).map(|_| HashMap::new()).collect();
+        for i in 2..=max_value {
+            // prime
+            if factors[i].is_empty() {
+                for j in (i..=max_value).step_by(i) {
+                    // update all non-prime dividents
+                    *factors[j].entry(i).or_insert(0) += count_factors(i, j)
+                }
+            }
+        }
+
+        // sub problem: calculate dp[i][j] = i! / j! / (i-j)!
+        // => 1.2.3.4...i / 1.2.3.4...j / 1.2.3.4..(i-j)
+        // => dp[i][j] = dp[i-1][j]*(i+j) <=> dp[i-1][j]*i + dp[i-1][j]*j
+        let mut dp = vec![vec![0; 65]; n + 64];
+        dp[0][0] = 1;
+        for i in 1..n + 64 {
+            dp[i][0] = 1;
+            for j in 1..65 {
+                dp[i][j] = (dp[i - 1][j] + dp[i - 1][j - 1]) % MODULO;
+            }
+        }
+
+        factors
+            .iter()
+            .skip(1)
+            .map(|factor| {
+                factor.iter().fold(1u64, |c, (_, p)| {
+                    (c * dp[n + *p - 1][*p] as u64) % MODULO as u64
+                })
+            })
+            .fold(0i32, |sum, x| (sum + x as i32) % MODULO)
     }
 }
