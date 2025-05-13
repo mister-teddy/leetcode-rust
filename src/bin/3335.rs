@@ -97,20 +97,17 @@ impl Solution {
         // Edge case: "z" will become "ab" after 1 transformation
         // So:                     len['z'][t]  = len['ab'][t-1]
         // Base on the above recursive logic, We can solve this problem using dynamic programming:
-        let mut len = vec![vec![1; t as usize + 1]; nth('z') + 1];
-        for i in 1..=t as usize {
-            for c in 'a'..='z' {
-                if c == 'z' {
-                    len[nth('z')][i] = (len[nth('a')][i - 1] + len[nth('b')][i - 1]) % MODULO;
-                } else {
-                    len[nth(c)][i] = len[nth(c) + 1][i - 1];
-                }
+        let mut len = vec![1; nth('z') + 1];
+        for _ in 1..=t {
+            let old_z = len[nth('z')];
+            len[nth('z')] = (len[nth('a')] + len[nth('b')]) % MODULO;
+            for c in 'a'..'y' {
+                len[nth(c)] = len[nth(c) + 1];
             }
+            len[nth('y')] = old_z;
         }
 
-        let res = s
-            .chars()
-            .fold(0, |res, c| (res + len[nth(c)][t as usize]) % MODULO);
+        let res = s.chars().fold(0, |res, c| (res + len[nth(c)]) % MODULO);
         res
     }
 }
