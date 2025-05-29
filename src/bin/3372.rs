@@ -79,17 +79,11 @@ fn bfs(i: usize, adj_list: &Vec<Vec<usize>>, k: i32) -> i32 {
 }
 
 fn edges_to_adj_list(edges: Vec<Vec<i32>>) -> Vec<Vec<usize>> {
-    let mut list = vec![];
+    let mut list = vec![vec![]; edges.len() + 1];
     for edge in edges {
         let a = edge[0] as usize;
         let b = edge[1] as usize;
-        if list.len() <= a {
-            list.resize(a + 1, vec![]);
-        }
         list[a].push(b);
-        if list.len() <= b {
-            list.resize(b + 1, vec![]);
-        }
         list[b].push(a);
     }
     list
