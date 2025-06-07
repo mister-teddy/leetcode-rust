@@ -66,6 +66,7 @@ impl Solution {
                 }
             } else {
                 let entry = count.entry(char).or_insert(BTreeSet::new());
+                // Actually, we don't need a BTreeSet here, because we insert i in an ascending order, so a stack is enough
                 entry.insert(i);
             }
         }
