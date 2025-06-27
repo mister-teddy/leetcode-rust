@@ -49,50 +49,25 @@ use std::{
 
 impl Solution {
     pub fn longest_subsequence(s: String, k: i32) -> i32 {
-        // I'm thinking about a dynamic programming approach
-        // Where dp[i] = the longest subsequece ending with i
-        // If you append 1 new binary digit, the prefix value will be doubled
-        // So we need dpp[i] = the longest subsequence that <= k/2
-        // First, we build an array of logs of k
-        let mut ks = HashSet::new();
-        fn build_ks(ks: &mut HashSet<i32>, k: i32) {
-            ks.insert(k);
-            if k > 0 {
-                build_ks(ks, k / 2);
-                if !ks.contains(&((k - 1) / 2)) {
-                    build_ks(ks, (k - 1) / 2);
-                }
-            }
-        }
-        build_ks(&mut ks, k);
-        // println!("ks = {:?}", ks);
-
-        // Let dp[i][j] be the length longest subsequence that end with s[i], and the number is <= j
-        // The result of the problem is max(dp[*][k])
-        let mut res = 0;
-        let chars: Vec<char> = s.chars().collect();
-        let mut dp = vec![HashMap::new(); chars.len() + 1];
-        // Obviously:
-        for k in &ks {
-            dp[0].insert(k, 0);
-        }
-
-        // dp[i][k] = dp[*][k/2]   // if s[i] == '0'
-        // or = dp[*][(k-1)/2]     // if s[i] == '1'
-        for i in 1..=chars.len() {
-            let char = chars[i - 1];
-            for k in &ks {
-                dp[i].insert(k, 0);
-                for prev in 0..i {
-                    if k != &0 || char == '0' {
-                        *dp[i].entry(k).or_insert(0) = dp[i][&k]
-                            .max(dp[prev][&if char == '0' { k / 2 } else { (k - 1) / 2 }] + 1);
+        // We can solve this problem using greedy
+        // Let's iterate from right to left, take all the zeroes, and only take 1 if it doesn't make sum exceed k
+        let mut res = 0i32;
+        let mut sum = 0;
+        for c in s.chars().rev() {
+            if c == '0' {
+                res += 1;
+            } else {
+                // Only take it if it doesn't bump k
+                // Although k is designed to fit in i32, 2^res is not. So we must check if res is still under log2k
+                if res <= k.ilog2() as i32 {
+                    let bump = 2i32.pow(res as u32);
+                    if sum + bump <= k {
+                        sum += bump;
+                        res += 1;
                     }
                 }
             }
-            res = res.max(dp[i][&k]);
         }
-        // println!("dp = {:?}", dp);
         res
     }
 }
