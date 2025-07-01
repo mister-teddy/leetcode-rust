@@ -46,7 +46,7 @@ impl Solution {
     pub fn num_subseq(nums: Vec<i32>, target: i32) -> i32 {
         // We can solve this problem using O(nlogn) sort, then 2 pointers to sum all posibilities between possible ranges
         let mut sorted = nums;
-        sorted.sort();
+        sorted.sort_unstable();
 
         let mut res = 0;
         let mut right = sorted.len() - 1;
