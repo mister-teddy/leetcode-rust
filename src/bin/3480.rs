@@ -1,3 +1,5 @@
+use std::{cmp::Reverse, collections::BinaryHeap, ops::Index};
+
 /// Category: algorithms
 /// Level: Hard
 /// Percent: 31.987408%
@@ -54,40 +56,53 @@
 
 impl Solution {
     pub fn max_subarrays(n: i32, conflicting_pairs: Vec<Vec<i32>>) -> i64 {
-        // Let's solve this problem brutefotely
-        let mut res = 0;
-        for i in 0..conflicting_pairs.len() {
-            let mut without_i = conflicting_pairs.clone();
-            without_i.remove(i);
-            res = res.max(count_subarrays(n, without_i));
-        }
-        res
+        // Instead of solving it bruteforcely, we can:
+        // - Count the result without removing any pair
+        // - Because for each pair removed, the result ALWAYS INCREASES (but by how much?)
+        // So if we know the max gain, we can answer the problem
+
+        // So we store the gains inside one array. We try to calculate this array while we count the number of subarrays
+        let mut gains = vec![0i64; conflicting_pairs.len()];
+
+        let count_without_remove = count_subarrays(n, conflicting_pairs, &mut gains);
+        let max_gain = gains.iter().max().unwrap();
+        count_without_remove + max_gain
     }
 }
 
-fn count_subarrays(n: i32, conflicting_pairs: Vec<Vec<i32>>) -> i64 {
-    // Ensure for each pair, the larger element is on the right
-    let pairs: Vec<Vec<i32>> = conflicting_pairs
-        .iter()
-        .map(|pair| {
-            if pair[0] > pair[1] {
-                vec![pair[1], pair[0]]
-            } else {
-                pair.clone()
-            }
-        })
-        .collect();
-    // Let's count how many subarrays without conflicting
+fn count_subarrays(n: i32, conflicting_pairs: Vec<Vec<i32>>, gains: &mut Vec<i64>) -> i64 {
+    // (After many improvements...)
+    // Let's use a heap so that we can quickly pop out the smallest cap to process incrementally
+    // While building the heap, we ensure for each pair, the larger element is on the left
+    let mut heap = BinaryHeap::new();
+    for (index, pair) in conflicting_pairs.iter().enumerate() {
+        if pair[0] > pair[1] {
+            heap.push(Reverse((pair[0], pair[1], index))); // And store the pair's original index inside the tuple so that we can assign back to `gains`
+        } else {
+            heap.push(Reverse((pair[1], pair[0], index)));
+        }
+    }
+
     let mut count = 0i64;
-    // by summing subarrays with each left endpoint
+    // We process each left end
     for left in 1..=n {
-        // The number of subarray starting from left is right - left + 1
-        // Now we just have to figure out what is right based on the conflicting_pairs
-        // If the pair[0] is smaller than left, we can freely pick any number without being fear of conflict
-        let pairs_0_passed_left = pairs.iter().filter(|pair| pair[0] >= left);
-        // Otherwise, we just pick the smaller one, and stop at right before pair[1]
-        let min_pair_1 = pairs_0_passed_left.map(|pair| pair[1]).min();
-        let right = min_pair_1.map_or(n, |min| min - 1);
+        let mut right = n;
+        // We only care about pairs whose smaller end is >= left (read the commit history for the reason why)
+        while heap.peek().is_some_and(|Reverse(pair)| pair.1 < left) {
+            heap.pop();
+        }
+        if let Some(Reverse(pair)) = heap.pop() {
+            right = pair.0 - 1;
+            // Now we find the next valid pair, to calculate the gain if pair is removed ("luckily", this problem only removes 1 pair)
+            while heap.peek().is_some_and(|Reverse(pair)| pair.1 < left) {
+                heap.pop(); // We pop out outdated pairs to prevent a nested linear loop
+            }
+            let next_right = heap.peek().map(|Reverse(pair)| pair.0 - 1).unwrap_or(n);
+            heap.push(Reverse(pair)); // Push back peek
+                                      // If `pair` were to be removed, its gain would be the difference between next_right and right
+            gains[pair.2] += (next_right - right) as i64;
+        }
+        // The number of subarrays is how many items between left and right, inclusively
         count += (right - left + 1) as i64;
     }
     count
