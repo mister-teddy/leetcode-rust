@@ -51,23 +51,23 @@ impl Solution {
         }
         // We can solve this problem with dynamic programming
         // Let dp[i] be the possibility that Alice ends up with i points
-        // The result is sum of dp[1..=n]
+        // The result is sum of dp[k..=n]
         // dp[i] = sum of dp[i-max_pts..=i-1]*1/max_pts
         // But Alice won't pick more cards if she already have k points
-        let n = n as usize;
-        let k = k as usize;
-        let max_pts = max_pts as usize;
-        let mut dp = vec![0f64; k + max_pts + 1]; // The max points we can get is k - 1 + max_pts
-        for i in 1..=max_pts {
-            dp[i] = 1f64 / max_pts as f64;
-        }
-        for i in 1..k {
-            for j in i + 1..=i + max_pts {
-                if j < dp.len() {
-                    dp[j] += dp[i] / max_pts as f64;
-                }
+        let mut dp = vec![0f64; n as usize + 1]; // We only care about possibilities of ending up in <=n
+        dp[0] = 1f64;
+        let mut s = 0f64;
+
+        for i in 1..=n {
+            if i - 1 < k {
+                s += dp[(i - 1) as usize] / max_pts as f64;
             }
+            if i - max_pts - 1 >= 0 && i - max_pts - 1 < k {
+                s -= dp[(i - max_pts - 1) as usize] / max_pts as f64;
+            }
+            dp[i as usize] = s;
         }
-        dp.iter().skip(k).take(n - k + 1).sum()
+
+        dp.iter().skip(k as usize).sum()
     }
 }
