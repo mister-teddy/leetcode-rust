@@ -48,29 +48,29 @@ impl Solution {
     pub fn minimum_area(grid: Vec<Vec<i32>>) -> i32 {
         let m = grid.len();
         let n = grid[0].len();
-        let row_min: Vec<usize> = grid
+        let left = grid
             .iter()
             .map(|row| row.iter().position(|cell| *cell == 1).unwrap_or(n))
-            .collect();
-        let row_max: Vec<usize> = grid
+            .min()
+            .unwrap();
+        let right = grid
             .iter()
             .map(|row| row.iter().rposition(|cell| *cell == 1).unwrap_or(0))
-            .collect();
+            .max()
+            .unwrap();
         let cols: Vec<Vec<i32>> = (0..n)
             .map(|i| grid.iter().map(|row| row[i]).collect())
             .collect();
-        let col_min: Vec<usize> = cols
+        let top = cols
             .iter()
             .map(|col| col.iter().position(|cell| *cell == 1).unwrap_or(m))
-            .collect();
-        let col_max: Vec<usize> = cols
+            .min()
+            .unwrap();
+        let bottom = cols
             .iter()
             .map(|col| col.iter().rposition(|cell| *cell == 1).unwrap_or(0))
-            .collect();
-        let left = row_min.iter().min().unwrap();
-        let right = row_max.iter().max().unwrap();
-        let top = col_min.iter().min().unwrap();
-        let bottom = col_max.iter().max().unwrap();
+            .max()
+            .unwrap();
         ((right - left + 1) * (bottom - top + 1)) as i32
     }
 }

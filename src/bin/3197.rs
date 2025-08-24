@@ -56,112 +56,136 @@
 
 impl Solution {
     pub fn minimum_sum(grid: Vec<Vec<i32>>) -> i32 {
+        let mut res = 901;
         let m = grid.len();
         let n = grid[0].len();
+        for i in 0..m - 1 {
+            for j in 0..n - 1 {
+                // Case 1: 12
+                //         33
+                if let Some(area1) = calc_area(sub_grid(&grid, 0, i, 0, j)) {
+                    if let Some(area2) = calc_area(sub_grid(&grid, 0, i, j + 1, n - 1)) {
+                        if let Some(area3) = calc_area(sub_grid(&grid, i + 1, m - 1, 0, n - 1)) {
+                            res = res.min(area1 + area2 + area3);
+                        }
+                    }
+                }
 
-        // We can solve this problem with dynamic programming
-        // Let dp[i][j][k] be the minimum total area of i rectangle(s) that cover all 1's in grid[0..j][0..k]
-        // The result is dp[3][grid.length - 1][grid[0].length - 1]
-        let mut dp = vec![vec![vec![0; n + 1]; m + 1]; 4];
+                // Case 2: 33
+                //         12
+                if let Some(area1) = calc_area(sub_grid(&grid, i + 1, m - 1, 0, j)) {
+                    if let Some(area2) = calc_area(sub_grid(&grid, i + 1, m - 1, j + 1, n - 1)) {
+                        if let Some(area3) = calc_area(sub_grid(&grid, 0, i, 0, n - 1)) {
+                            res = res.min(area1 + area2 + area3);
+                        }
+                    }
+                }
 
-        // dp[0], is when we don't draw any rectangle, then the area will be 0 if all cells are 0, otherwise INFINITY
-        // The max size of the grid is 30*30, so max possible total area would be 600
-        const INFINITY: i32 = 601;
+                // Case 3: 13
+                //         23
+                if let Some(area1) = calc_area(sub_grid(&grid, 0, i, 0, j)) {
+                    if let Some(area2) = calc_area(sub_grid(&grid, i + 1, m - 1, 0, j)) {
+                        if let Some(area3) = calc_area(sub_grid(&grid, 0, m - 1, j + 1, n - 1)) {
+                            res = res.min(area1 + area2 + area3);
+                        }
+                    }
+                }
 
-        // We also precalculate the min and max position of the cells with value 1 in each row and each column
-        let row_min: Vec<usize> = grid
-            .iter()
-            .map(|row| row.iter().position(|cell| *cell == 1).unwrap_or(n))
-            .collect();
-        let cols: Vec<Vec<i32>> = (0..n)
-            .map(|i| grid.iter().map(|row| row[i]).collect())
-            .collect();
-        let col_min: Vec<usize> = cols
-            .iter()
-            .map(|col| col.iter().position(|cell| *cell == 1).unwrap_or(m))
-            .collect();
-
-        for i in 1..=m {
-            for j in 1..=n {
-                dp[0][i][j] = if row_min[i - 1] < i || col_min[j - 1] < j {
-                    INFINITY
-                } else {
-                    0
+                // Case 4: 31
+                //         32
+                if let Some(area1) = calc_area(sub_grid(&grid, 0, i, j + 1, n - 1)) {
+                    if let Some(area2) = calc_area(sub_grid(&grid, i + 1, m - 1, j + 1, n - 1)) {
+                        if let Some(area3) = calc_area(sub_grid(&grid, 0, m - 1, 0, j)) {
+                            res = res.min(area1 + area2 + area3);
+                        }
+                    }
                 }
             }
         }
 
-        // Now we calculate the minimum total area of rectangles by using dynamic programming
-        for i in 1..=3 {
-            for j in 1..=m {
-                for k in 1..=n {
-                    // We consider drawing in each direction
-                    let mut new_dp = INFINITY;
-                    // Horizontally
-                    let mut kk = k;
-                    let mut top = n;
-                    let mut bottom = 0;
-                    loop {
-                        if col_min[kk - 1] < j {
-                            // This column has 1
-                            top = top.min(col_min[kk - 1]);
-                            bottom = bottom.max(
-                                cols[kk - 1]
-                                    .iter()
-                                    .take(j)
-                                    .rposition(|cell| *cell == 1)
-                                    .expect("There must be at least 1 valid cell in this column"),
-                            );
-                            let height = bottom - top + 1;
-                            let width = k - kk + 1;
-                            let area = height * width;
-                            new_dp = new_dp.min(area as i32 + dp[i - 1][j][kk - 1]);
-                        } else if kk == k {
-                            new_dp = new_dp.min(dp[i][j][kk - 1]);
+        for i in 0..m - 2 {
+            for j in i + 1..m - 1 {
+                // Case 5: 1
+                //         2
+                //         3
+                if let Some(area1) = calc_area(sub_grid(&grid, 0, i, 0, n - 1)) {
+                    if let Some(area2) = calc_area(sub_grid(&grid, i + 1, j, 0, n - 1)) {
+                        if let Some(area3) = calc_area(sub_grid(&grid, j + 1, m - 1, 0, n - 1)) {
+                            res = res.min(area1 + area2 + area3);
                         }
-                        if kk == 1 {
-                            // Try drawing the rectangle with different values of width, and height is the neccessary height that cover all 1's
-                            break;
-                        }
-                        kk -= 1;
                     }
-
-                    // Vertically
-                    // This row has 1
-                    let mut left = m;
-                    let mut right = 0;
-                    let mut jj = j;
-                    loop {
-                        if row_min[jj - 1] < k {
-                            left = left.min(row_min[jj - 1]);
-                            right = right.max(
-                                grid[jj - 1]
-                                    .iter()
-                                    .take(k)
-                                    .rposition(|cell| *cell == 1)
-                                    .expect("There must be at least 1 valid cell in this row"),
-                            );
-                            let width = right - left + 1;
-                            let height = j - jj + 1;
-                            let area = width * height;
-                            new_dp = new_dp.min(area as i32 + dp[i - 1][jj - 1][k]);
-                        } else if jj == j {
-                            new_dp = new_dp.min(dp[i][jj - 1][k]);
-                        }
-                        if jj == 1 {
-                            // Try drawing the rectangle with different values of width, and height is the neccessary height that cover all 1's
-                            break;
-                        }
-                        jj -= 1;
-                    }
-                    dp[i][j][k] = new_dp;
                 }
             }
         }
 
-        // The result
-        dp[3][m][n]
+        for i in 0..n - 2 {
+            for j in i + 1..n - 1 {
+                // Case 6: 123
+                if let Some(area1) = calc_area(sub_grid(&grid, 0, m - 1, 0, i)) {
+                    if let Some(area2) = calc_area(sub_grid(&grid, 0, m - 1, i + 1, j)) {
+                        if let Some(area3) = calc_area(sub_grid(&grid, 0, m - 1, j + 1, n - 1)) {
+                            res = res.min(area1 + area2 + area3);
+                        }
+                    }
+                }
+            }
+        }
+
+        res
     }
+}
+
+fn sub_grid(
+    grid: &Vec<Vec<i32>>,
+    top: usize,
+    bottom: usize,
+    left: usize,
+    right: usize,
+) -> Vec<Vec<i32>> {
+    return grid
+        .iter()
+        .skip(top)
+        .take(bottom - top + 1)
+        .map(|row| {
+            row.iter()
+                .skip(left)
+                .take(right - left + 1)
+                .map(|it| *it)
+                .collect()
+        })
+        .collect();
+}
+
+fn calc_area(grid: Vec<Vec<i32>>) -> Option<i32> {
+    let n = grid[0].len();
+    let left = grid
+        .iter()
+        .map(|row| row.iter().position(|cell| *cell == 1))
+        .filter(|pos| pos.is_some())
+        .map(|pos| pos.unwrap())
+        .min()?;
+    let right = grid
+        .iter()
+        .map(|row| row.iter().rposition(|cell| *cell == 1))
+        .filter(|pos| pos.is_some())
+        .map(|pos| pos.unwrap())
+        .max()?;
+    let cols: Vec<Vec<i32>> = (0..n)
+        .map(|i| grid.iter().map(|row| row[i]).collect())
+        .collect();
+    let top = cols
+        .iter()
+        .map(|col| col.iter().position(|cell| *cell == 1))
+        .filter(|pos| pos.is_some())
+        .map(|pos| pos.unwrap())
+        .min()?;
+    let bottom = cols
+        .iter()
+        .map(|col| col.iter().rposition(|cell| *cell == 1))
+        .filter(|pos| pos.is_some())
+        .map(|pos| pos.unwrap())
+        .max()?;
+    Some(((right - left + 1) * (bottom - top + 1)) as i32)
 }
 
 struct Solution {}
